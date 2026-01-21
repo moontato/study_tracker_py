@@ -36,5 +36,3 @@ dependencies are required.
 ├── study_sessions.db  # SQLite database (created on first run)
 └── README.md
 ```
-
-Happy studying!
