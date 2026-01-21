@@ -78,6 +78,18 @@ class SessionDatabase:
 class StudyTrackerApp(tk.Tk):
     def __init__(self):
         super().__init__()
+        # Apply a modern ttk theme and color scheme
+        style = ttk.Style(self)
+        try:
+            style.theme_use("clam")  # light‑mode theme
+        except tk.TclError:
+            # Fallback if theme not available
+            pass
+        # Configure widget styles for a cleaner look
+        style.configure("TButton", padding=6, relief="flat")
+        style.configure("TLabel", background="white")
+        style.configure("TFrame", background="white")
+        self.configure(background="white")
         self.title("Study Tracker")
         self.resizable(False, False)
         self.geometry("400x400")
@@ -97,7 +109,7 @@ class StudyTrackerApp(tk.Tk):
     # ---------------------------------------------------------------------
     def _create_widgets(self) -> None:
         # Timer display
-        self.timer_label = ttk.Label(self, text="00:00:00", font=("Helvetica", 24))
+        self.timer_label = ttk.Label(self, text="00:00:00", font=("Helvetica", 32, "bold"))
         self.timer_label.pack(pady=10)
 
         # Control buttons
@@ -117,6 +129,7 @@ class StudyTrackerApp(tk.Tk):
         notes_lbl.pack(anchor="w", padx=10, pady=(10, 0))
         self.notes_text = tk.Text(self, height=8, width=45)
         self.notes_text.pack(padx=10, pady=5)
+        self.notes_text.config(font=("Helvetica", 10))
 
         # View sessions button
         view_btn = ttk.Button(self, text="View Sessions", command=self.open_sessions_window)
@@ -234,6 +247,8 @@ class StudyTrackerApp(tk.Tk):
                 self._show_session_detail(start_time, end_time, duration, notes)
 
         listbox.bind("<<ListboxSelect>>", on_select)
+        # Apply light background to listbox
+        listbox.config(bg="white", selectbackground="#d1e7ff")
 
     def _show_session_detail(self, start: str, end: str, duration: float, notes: str) -> None:
         win = tk.Toplevel(self)
@@ -241,6 +256,7 @@ class StudyTrackerApp(tk.Tk):
         win.geometry("400x300")
         txt = tk.Text(win, wrap="word", height=15, width=50)
         txt.pack(padx=10, pady=10)
+        txt.config(bg="white", fg="black")
         txt.insert(tk.END, f"Start: {start}\n")
         txt.insert(tk.END, f"End: {end}\n")
         txt.insert(tk.END, f"Duration: {self._format_seconds(duration)}\n\n")
@@ -251,4 +267,3 @@ class StudyTrackerApp(tk.Tk):
 if __name__ == "__main__":
     app = StudyTrackerApp()
     app.mainloop()
-
