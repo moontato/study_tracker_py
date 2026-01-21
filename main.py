@@ -92,7 +92,9 @@ class StudyTrackerApp(tk.Tk):
         self.configure(background="white")
         self.title("Study Tracker")
         self.resizable(False, False)
-        self.geometry("400x400")
+        self.geometry("500x500")
+        self.minsize(500, 500)
+        self.resizable(True, True)
 
         self.db = SessionDatabase(DB_PATH)
 
@@ -114,7 +116,7 @@ class StudyTrackerApp(tk.Tk):
 
         # Control buttons
         btn_frame = ttk.Frame(self)
-        btn_frame.pack(pady=5)
+        btn_frame.pack(pady=5, fill='x', expand=True)
         self.start_btn = ttk.Button(btn_frame, text="Start", command=self.start_session)
         self.start_btn.grid(row=0, column=0, padx=5)
         self.pause_btn = ttk.Button(btn_frame, text="Pause", command=self.pause_session, state="disabled")
@@ -123,6 +125,9 @@ class StudyTrackerApp(tk.Tk):
         self.resume_btn.grid(row=0, column=2, padx=5)
         self.stop_btn = ttk.Button(btn_frame, text="Stop", command=self.stop_session, state="disabled")
         self.stop_btn.grid(row=0, column=3, padx=5)
+        # Make button columns expand equally for centering
+        for i in range(4):
+            btn_frame.columnconfigure(i, weight=1)
 
         # Notes area
         notes_lbl = ttk.Label(self, text="Notes:")
