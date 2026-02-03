@@ -74,6 +74,16 @@ class SessionDatabase:
         cursor = self.conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,))
         return cursor.fetchone()
 
+    def delete_session(self, session_id: int) -> None:
+        """Remove a session by its id from the database.
+
+        The caller should handle any UI confirmation before invoking this
+        method. The method does not return a value but raises an exception
+        if the delete fails.
+        """
+        self.conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+        self.conn.commit()
+
 
 class StudyTrackerApp(tk.Tk):
     def __init__(self):
@@ -319,6 +329,10 @@ class StudyTrackerApp(tk.Tk):
         # Apply light background to listbox
         listbox.config(bg="white", selectbackground="#d1e7ff")
 
+        # Delete button
+        delete_btn = ttk.Button(win, text="Delete Selected", command=lambda: self._delete_selected_session(listbox, sessions))
+        delete_btn.pack(pady=5)
+
     def _show_session_detail(self, start: str, end: str, duration: float, notes: str) -> None:
         win = tk.Toplevel(self)
         win.title("Session Detail")
@@ -331,6 +345,39 @@ class StudyTrackerApp(tk.Tk):
         txt.insert(tk.END, f"Duration: {self._format_seconds(duration)}\n\n")
         txt.insert(tk.END, f"Notes:\n{notes}")
         txt.config(state="disabled")
+
+    def _delete_selected_session(self, listbox: tk.Listbox, sessions: list[tuple]) -> None:
+        """Delete the session currently selected in the listbox.
+
+        Parameters
+        ----------
+        listbox:
+            The listbox widget containing session items.
+        sessions:
+            The list of session tuples as returned by ``db.get_all_sessions``.
+        """
+        selection = listbox.curselection()
+        if not selection:
+            messagebox.showinfo("No selection", "Please select a session to delete.")
+            return
+        idx = selection[0]
+        sess_id = sessions[idx][0]
+        confirm = messagebox.askyesno("Delete Session", f"Are you sure you want to delete session {sess_id}?")
+        if not confirm:
+            return
+        try:
+            self.db.delete_session(sess_id)
+            messagebox.showinfo("Deleted", f"Session {sess_id} deleted.")
+        except Exception as exc:  # pragma: no cover - defensive
+            messagebox.showerror("Error", f"Failed to delete session: {exc}")
+        # Refresh listbox
+        listbox.delete(0, tk.END)
+        # Re‑populate
+        new_sessions = self.db.get_all_sessions()
+        for sess in new_sessions:
+            sid, start_str, dur = sess
+            start = datetime.fromisoformat(start_str)
+            listbox.insert(tk.END, f"{sid}: {start.strftime('%Y-%m-%d %H:%M')} ({self._format_seconds(dur)})")
 
 
 if __name__ == "__main__":
