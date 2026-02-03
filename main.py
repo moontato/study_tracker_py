@@ -101,6 +101,10 @@ class StudyTrackerApp(tk.Tk):
         # State variables
         self._start_time: datetime | None = None
         self._elapsed: float = 0.0
+        # New: mode selection: 'stopwatch' or 'timer'
+        self._mode: str = "stopwatch"
+        # For timer mode: target duration in seconds
+        self._target_seconds: float = 0.0
         self._running: bool = False
         self._timer_job: int | None = None
 
@@ -110,6 +114,15 @@ class StudyTrackerApp(tk.Tk):
     # UI Setup
     # ---------------------------------------------------------------------
     def _create_widgets(self) -> None:
+        # Mode selector
+        mode_frame = ttk.Frame(self)
+        mode_frame.pack(pady=5)
+        ttk.Label(mode_frame, text="Mode:").grid(row=0, column=0, padx=5)
+        mode_var = tk.StringVar(value=self._mode)
+        self._mode_var = mode_var
+        ttk.Radiobutton(mode_frame, text="Stopwatch", variable=mode_var, value="stopwatch", command=self._on_mode_change).grid(row=0, column=1, padx=5)
+        ttk.Radiobutton(mode_frame, text="Timer", variable=mode_var, value="timer", command=self._on_mode_change).grid(row=0, column=2, padx=5)
+
         # Timer display
         self.timer_label = ttk.Label(self, text="00:00:00", font=("Helvetica", 32, "bold"))
         self.timer_label.pack(pady=10)
@@ -140,6 +153,19 @@ class StudyTrackerApp(tk.Tk):
         view_btn = ttk.Button(self, text="View Sessions", command=self.open_sessions_window)
         view_btn.pack(pady=5)
 
+    def _on_mode_change(self) -> None:
+        """Handle switching between stopwatch and timer modes.
+
+        When the mode changes, reset any running session and update the UI.
+        """
+        self._mode = self._mode_var.get()
+        # Reset session if running
+        if self._running or self._elapsed > 0:
+            # Stop current session and reset display
+            self.stop_session()
+        # Update timer label to zero
+        self.timer_label.config(text="00:00:00")
+
     # ---------------------------------------------------------------------
     # Timer logic
     # ---------------------------------------------------------------------
@@ -147,8 +173,17 @@ class StudyTrackerApp(tk.Tk):
         if not self._running:
             return
         now = datetime.now()
-        elapsed = (now - self._start_time).total_seconds() + self._elapsed
-        self.timer_label.config(text=self._format_seconds(elapsed))
+        if self._mode == "stopwatch":
+            elapsed = (now - self._start_time).total_seconds() + self._elapsed
+            self.timer_label.config(text=self._format_seconds(elapsed))
+        else:  # timer mode
+            elapsed = (now - self._start_time).total_seconds() + self._elapsed
+            remaining = max(self._target_seconds - elapsed, 0)
+            self.timer_label.config(text=self._format_seconds(remaining))
+            if remaining <= 0:
+                # Timer finished automatically
+                self.stop_session()
+                return
         # schedule next update
         self._timer_job = self.after(200, self._update_timer)
 
@@ -164,8 +199,21 @@ class StudyTrackerApp(tk.Tk):
     def start_session(self) -> None:
         if self._running:
             return
+        # For timer mode, prompt for duration
+        if self._mode == "timer":
+            # Ask minutes; default 25
+            minutes = simpledialog.askinteger(
+                "Timer duration", "Enter minutes:", parent=self, minvalue=1, maxvalue=180
+            )
+            if minutes is None:
+                return
+            self._target_seconds = minutes * 60
+            # Reset elapsed for new session
+            self._elapsed = 0.0
+        else:
+            # Stopwatch mode
+            self._target_seconds = 0.0
         self._start_time = datetime.now()
-        self._elapsed = 0.0
         self._running = True
         self._update_timer()
         self.start_btn.config(state="disabled")
@@ -199,11 +247,16 @@ class StudyTrackerApp(tk.Tk):
         if self._running:
             self.after_cancel(self._timer_job)  # type: ignore[arg-type]
             now = datetime.now()
-            duration = (now - self._start_time).total_seconds() + self._elapsed
+            elapsed = (now - self._start_time).total_seconds() + self._elapsed
             start_time = self._start_time
         else:
-            duration = self._elapsed
+            elapsed = self._elapsed
             start_time = self._start_time
+        # Determine duration: if timer mode and finished automatically, use target
+        if self._mode == "timer" and elapsed >= self._target_seconds:
+            duration = self._target_seconds
+        else:
+            duration = elapsed
         # Fetch notes
         notes = self.notes_text.get("1.0", tk.END).strip()
         # Save to DB
