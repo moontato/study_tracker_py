@@ -96,10 +96,13 @@ class StudyTrackerApp(tk.Tk):
             # Fallback if theme not available
             pass
         # Configure widget styles for a cleaner look
-        style.configure("TButton", padding=6, relief="flat")
-        style.configure("TLabel", background="white")
-        style.configure("TFrame", background="white")
-        self.configure(background="white")
+        style.configure("TButton", padding=6, relief="flat", font=("Segoe UI", 10))
+        style.configure("TLabel", font=("Segoe UI", 10), background="white")
+        style.configure("TFrame", background="#f0f0f0")
+        # Configure treeview appearance
+        style.configure("Treeview", background="white", foreground="black", fieldbackground="white")
+        style.map("Treeview", background=[("selected", "#cce5ff")])
+        self.configure(background="#f0f0f0")
         self.title("Study Tracker")
         self.resizable(False, False)
         self.geometry("500x500")
@@ -124,9 +127,14 @@ class StudyTrackerApp(tk.Tk):
     # UI Setup
     # ---------------------------------------------------------------------
     def _create_widgets(self) -> None:
+        """Create and layout all UI widgets with a modern look."""
+        # Top‑level container with padding
+        main_frame = ttk.Frame(self, padding=10)
+        main_frame.pack(fill="both", expand=True)
+
         # Mode selector
-        mode_frame = ttk.Frame(self)
-        mode_frame.pack(pady=5)
+        mode_frame = ttk.Frame(main_frame)
+        mode_frame.grid(row=0, column=0, sticky="w", pady=(0, 10))
         ttk.Label(mode_frame, text="Mode:").grid(row=0, column=0, padx=5)
         mode_var = tk.StringVar(value=self._mode)
         self._mode_var = mode_var
@@ -134,12 +142,12 @@ class StudyTrackerApp(tk.Tk):
         ttk.Radiobutton(mode_frame, text="Timer", variable=mode_var, value="timer", command=self._on_mode_change).grid(row=0, column=2, padx=5)
 
         # Timer display
-        self.timer_label = ttk.Label(self, text="00:00:00", font=("Helvetica", 32, "bold"))
-        self.timer_label.pack(pady=10)
+        self.timer_label = ttk.Label(main_frame, text="00:00:00", font=("Segoe UI", 32, "bold"))
+        self.timer_label.grid(row=1, column=0, pady=10)
 
         # Control buttons
-        btn_frame = ttk.Frame(self)
-        btn_frame.pack(pady=5, fill='x', expand=True)
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.grid(row=2, column=0, pady=5, sticky="ew")
         self.start_btn = ttk.Button(btn_frame, text="Start", command=self.start_session)
         self.start_btn.grid(row=0, column=0, padx=5)
         self.pause_btn = ttk.Button(btn_frame, text="Pause", command=self.pause_session, state="disabled")
@@ -148,20 +156,21 @@ class StudyTrackerApp(tk.Tk):
         self.resume_btn.grid(row=0, column=2, padx=5)
         self.stop_btn = ttk.Button(btn_frame, text="Stop", command=self.stop_session, state="disabled")
         self.stop_btn.grid(row=0, column=3, padx=5)
-        # Make button columns expand equally for centering
         for i in range(4):
             btn_frame.columnconfigure(i, weight=1)
 
         # Notes area
-        notes_lbl = ttk.Label(self, text="Notes:")
-        notes_lbl.pack(anchor="w", padx=10, pady=(10, 0))
-        self.notes_text = tk.Text(self, height=8, width=45)
-        self.notes_text.pack(padx=10, pady=5)
-        self.notes_text.config(font=("Helvetica", 10))
+        notes_lbl = ttk.Label(main_frame, text="Notes:")
+        notes_lbl.grid(row=3, column=0, sticky="w", padx=10, pady=(10, 0))
+        self.notes_text = tk.Text(main_frame, height=8, width=45, font=("Segoe UI", 10))
+        self.notes_text.grid(row=4, column=0, padx=10, pady=5, sticky="ew")
 
         # View sessions button
-        view_btn = ttk.Button(self, text="View Sessions", command=self.open_sessions_window)
-        view_btn.pack(pady=5)
+        view_btn = ttk.Button(main_frame, text="View Sessions", command=self.open_sessions_window)
+        view_btn.grid(row=5, column=0, pady=5)
+
+        # Add a simple menu bar
+        self._create_menu()
 
     def _on_mode_change(self) -> None:
         """Handle switching between stopwatch and timer modes.
@@ -305,41 +314,36 @@ class StudyTrackerApp(tk.Tk):
     def open_sessions_window(self) -> None:
         win = tk.Toplevel(self)
         win.title("Past Sessions")
-        # Make window wider to accommodate the delete button and provide
-        # better spacing for the listbox.
-        # Slightly increase width to ensure adequate padding
-        # Increase width further for better spacing
-        win.geometry("580x300")
-        listbox = tk.Listbox(win, width=50, height=10, selectmode='extended')
-        listbox.pack(side="left", fill="both", expand=True, padx=5, pady=5)
-        scrollbar = ttk.Scrollbar(win, orient="vertical", command=listbox.yview)
+        win.geometry("600x350")
+
+        # Treeview for sessions
+        columns = ("id", "start", "duration")
+        tree = ttk.Treeview(win, columns=columns, show="headings", selectmode="extended")
+        tree.heading("id", text="ID")
+        tree.column("id", width=50, anchor="center")
+        tree.heading("start", text="Start")
+        tree.column("start", width=180, anchor="w")
+        tree.heading("duration", text="Duration")
+        tree.column("duration", width=80, anchor="center")
+        tree.pack(side="left", fill="both", expand=True, padx=5, pady=5)
+        scrollbar = ttk.Scrollbar(win, orient="vertical", command=tree.yview)
         scrollbar.pack(side="right", fill="y")
-        listbox.config(yscrollcommand=scrollbar.set)
+        tree.configure(yscrollcommand=scrollbar.set)
 
         # Populate
         sessions = self.db.get_all_sessions()
         for sess in sessions:
             sid, start_str, dur = sess
             start = datetime.fromisoformat(start_str)
-            listbox.insert(tk.END, f"{sid}: {start.strftime('%Y-%m-%d %H:%M')} ({self._format_seconds(dur)})")
+            tree.insert("", "end", values=(sid, start.strftime("%Y-%m-%d %H:%M"), self._format_seconds(dur)))
 
-        # Removed automatic opening on selection. Users can now choose
-        # to open one or multiple sessions via the new "Open Session"
-        # button. This allows users to simply inspect the list without
-        # triggering a detail view.
-        # Apply light background to listbox
-        listbox.config(bg="white", selectbackground="#d1e7ff")
-
-        # Delete button
-        # Use a regular Tk button to give us a white background that
-        # contrasts the gray window background.
-        delete_btn = tk.Button(win, text="Delete Selected", bg="white", command=lambda: self._delete_selected_session(listbox, sessions))
-        delete_btn.pack(pady=5)
-
-        # New Open Session button – allows opening one or multiple
-        # selected sessions.
-        open_btn = tk.Button(win, text="Open Session", bg="white", command=lambda: self._open_selected_sessions(listbox, sessions))
-        open_btn.pack(pady=5)
+        # Buttons
+        btn_frame = ttk.Frame(win)
+        btn_frame.pack(pady=5)
+        delete_btn = ttk.Button(btn_frame, text="Delete Selected", command=lambda: self._delete_selected_session(tree, sessions))
+        delete_btn.grid(row=0, column=0, padx=5)
+        open_btn = ttk.Button(btn_frame, text="Open Session", command=lambda: self._open_selected_sessions(tree, sessions))
+        open_btn.grid(row=0, column=1, padx=5)
 
     def _show_session_detail(self, start: str, end: str, duration: float, notes: str) -> None:
         win = tk.Toplevel(self)
@@ -354,23 +358,44 @@ class StudyTrackerApp(tk.Tk):
         txt.insert(tk.END, f"Notes:\n{notes}")
         txt.config(state="disabled")
 
-    def _delete_selected_session(self, listbox: tk.Listbox, sessions: list[tuple]) -> None:
-        """Delete the session currently selected in the listbox.
+    # -----------------------------------------------------------------
+    # Menu and about dialog
+    # -----------------------------------------------------------------
+    def _create_menu(self) -> None:
+        """Create a minimal menu bar with File and Help options."""
+        menubar = tk.Menu(self)
+        file_menu = tk.Menu(menubar, tearoff=0)
+        file_menu.add_command(label="Exit", command=self.quit)
+        menubar.add_cascade(label="File", menu=file_menu)
+        help_menu = tk.Menu(menubar, tearoff=0)
+        help_menu.add_command(label="About", command=self._show_about)
+        menubar.add_cascade(label="Help", menu=help_menu)
+        self.config(menu=menubar)
+
+    def _show_about(self) -> None:
+        """Display a short About dialog for the application."""
+        messagebox.showinfo(
+            "About Study Tracker",
+            "Study Tracker – a lightweight stopwatch and timer for study sessions.\n\nAuthor: moontato",
+        )
+
+    def _delete_selected_session(self, tree: ttk.Treeview, sessions: list[tuple]) -> None:
+        """Delete the session(s) currently selected in the treeview.
 
         Parameters
         ----------
-        listbox:
-            The listbox widget containing session items.
+        tree:
+            The treeview widget containing session items.
         sessions:
             The list of session tuples as returned by ``db.get_all_sessions``.
         """
-        selection = listbox.curselection()
+        selection = tree.selection()
         if not selection:
             messagebox.showinfo("No selection", "Please select session(s) to delete.")
             return
 
         # Build list of session ids to delete
-        ids_to_delete = [sessions[i][0] for i in selection]
+        ids_to_delete = [int(tree.item(item)["values"][0]) for item in selection]
         confirm = messagebox.askyesno(
             "Delete Sessions",
             f"Are you sure you want to delete {len(ids_to_delete)} session(s)?"
@@ -384,30 +409,31 @@ class StudyTrackerApp(tk.Tk):
             messagebox.showinfo("Deleted", f"Deleted {len(ids_to_delete)} session(s).")
         except Exception as exc:  # pragma: no cover - defensive
             messagebox.showerror("Error", f"Failed to delete sessions: {exc}")
-        # Refresh listbox
-        listbox.delete(0, tk.END)
+        # Refresh treeview
+        for item in tree.get_children():
+            tree.delete(item)
         # Re‑populate
         new_sessions = self.db.get_all_sessions()
         for sess in new_sessions:
             sid, start_str, dur = sess
             start = datetime.fromisoformat(start_str)
-            listbox.insert(tk.END, f"{sid}: {start.strftime('%Y-%m-%d %H:%M')} ({self._format_seconds(dur)})")
+            tree.insert("", "end", values=(sid, start.strftime("%Y-%m-%d %H:%M"), self._format_seconds(dur)))
         # Update the external ``sessions`` list reference so subsequent
         # deletes reference the new order.
         sessions[:] = new_sessions
 
-    def _open_selected_sessions(self, listbox: tk.Listbox, sessions: list[tuple]) -> None:
+    def _open_selected_sessions(self, tree: ttk.Treeview, sessions: list[tuple]) -> None:
         """Open the detail view for each selected session.
 
         The function supports opening multiple sessions in separate windows.
         If no sessions are selected, a message is shown.
         """
-        selection = listbox.curselection()
+        selection = tree.selection()
         if not selection:
             messagebox.showinfo("No selection", "Please select a session to open.")
             return
         for idx in selection:
-            sess_id = sessions[idx][0]
+            sess_id = int(tree.item(idx)["values"][0])
             session = self.db.get_session(sess_id)
             if session:
                 _, start_time, end_time, duration, notes = session
