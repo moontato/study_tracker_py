@@ -310,7 +310,7 @@ class StudyTrackerApp(tk.Tk):
         # Slightly increase width to ensure adequate padding
         # Increase width further for better spacing
         win.geometry("580x300")
-        listbox = tk.Listbox(win, width=50, height=10)
+        listbox = tk.Listbox(win, width=50, height=10, selectmode='extended')
         listbox.pack(side="left", fill="both", expand=True, padx=5, pady=5)
         scrollbar = ttk.Scrollbar(win, orient="vertical", command=listbox.yview)
         scrollbar.pack(side="right", fill="y")
@@ -323,18 +323,10 @@ class StudyTrackerApp(tk.Tk):
             start = datetime.fromisoformat(start_str)
             listbox.insert(tk.END, f"{sid}: {start.strftime('%Y-%m-%d %H:%M')} ({self._format_seconds(dur)})")
 
-        def on_select(event: tk.Event) -> None:
-            selection = listbox.curselection()
-            if not selection:
-                return
-            idx = selection[0]
-            sess_id = sessions[idx][0]
-            session = self.db.get_session(sess_id)
-            if session:
-                _, start_time, end_time, duration, notes = session
-                self._show_session_detail(start_time, end_time, duration, notes)
-
-        listbox.bind("<<ListboxSelect>>", on_select)
+        # Removed automatic opening on selection. Users can now choose
+        # to open one or multiple sessions via the new "Open Session"
+        # button. This allows users to simply inspect the list without
+        # triggering a detail view.
         # Apply light background to listbox
         listbox.config(bg="white", selectbackground="#d1e7ff")
 
@@ -343,6 +335,11 @@ class StudyTrackerApp(tk.Tk):
         # contrasts the gray window background.
         delete_btn = tk.Button(win, text="Delete Selected", bg="white", command=lambda: self._delete_selected_session(listbox, sessions))
         delete_btn.pack(pady=5)
+
+        # New Open Session button – allows opening one or multiple
+        # selected sessions.
+        open_btn = tk.Button(win, text="Open Session", bg="white", command=lambda: self._open_selected_sessions(listbox, sessions))
+        open_btn.pack(pady=5)
 
     def _show_session_detail(self, start: str, end: str, duration: float, notes: str) -> None:
         win = tk.Toplevel(self)
@@ -369,18 +366,24 @@ class StudyTrackerApp(tk.Tk):
         """
         selection = listbox.curselection()
         if not selection:
-            messagebox.showinfo("No selection", "Please select a session to delete.")
+            messagebox.showinfo("No selection", "Please select session(s) to delete.")
             return
-        idx = selection[0]
-        sess_id = sessions[idx][0]
-        confirm = messagebox.askyesno("Delete Session", f"Are you sure you want to delete session {sess_id}?")
+
+        # Build list of session ids to delete
+        ids_to_delete = [sessions[i][0] for i in selection]
+        confirm = messagebox.askyesno(
+            "Delete Sessions",
+            f"Are you sure you want to delete {len(ids_to_delete)} session(s)?"
+        )
         if not confirm:
             return
+
         try:
-            self.db.delete_session(sess_id)
-            messagebox.showinfo("Deleted", f"Session {sess_id} deleted.")
+            for sess_id in ids_to_delete:
+                self.db.delete_session(sess_id)
+            messagebox.showinfo("Deleted", f"Deleted {len(ids_to_delete)} session(s).")
         except Exception as exc:  # pragma: no cover - defensive
-            messagebox.showerror("Error", f"Failed to delete session: {exc}")
+            messagebox.showerror("Error", f"Failed to delete sessions: {exc}")
         # Refresh listbox
         listbox.delete(0, tk.END)
         # Re‑populate
@@ -392,6 +395,23 @@ class StudyTrackerApp(tk.Tk):
         # Update the external ``sessions`` list reference so subsequent
         # deletes reference the new order.
         sessions[:] = new_sessions
+
+    def _open_selected_sessions(self, listbox: tk.Listbox, sessions: list[tuple]) -> None:
+        """Open the detail view for each selected session.
+
+        The function supports opening multiple sessions in separate windows.
+        If no sessions are selected, a message is shown.
+        """
+        selection = listbox.curselection()
+        if not selection:
+            messagebox.showinfo("No selection", "Please select a session to open.")
+            return
+        for idx in selection:
+            sess_id = sessions[idx][0]
+            session = self.db.get_session(sess_id)
+            if session:
+                _, start_time, end_time, duration, notes = session
+                self._show_session_detail(start_time, end_time, duration, notes)
 
 
 if __name__ == "__main__":
