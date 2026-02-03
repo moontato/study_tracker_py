@@ -1,2 +1,5 @@
 study_sessions.db
 __pycache__/main.cpython-312.pyc
+dist/*
+build/*
+*.spec
