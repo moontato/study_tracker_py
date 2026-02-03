@@ -266,9 +266,14 @@ class StudyTrackerApp(tk.Tk):
             messagebox.showinfo("No session", "No active session to stop.")
             return
 
-        # Compute elapsed time regardless of running state
+        # Compute elapsed time.  When the session is still running we need to
+        # add the time since the last start; when paused we already have the
+        # full elapsed time in ``_elapsed``.
         now = datetime.now()
-        elapsed = (now - self._start_time).total_seconds() + self._elapsed
+        if self._running:
+            elapsed = (now - self._start_time).total_seconds() + self._elapsed
+        else:
+            elapsed = self._elapsed
         start_time = self._start_time
 
         # If the timer finished automatically, record the target duration
@@ -384,6 +389,9 @@ class StudyTrackerApp(tk.Tk):
             sid, start_str, dur = sess
             start = datetime.fromisoformat(start_str)
             listbox.insert(tk.END, f"{sid}: {start.strftime('%Y-%m-%d %H:%M')} ({self._format_seconds(dur)})")
+        # Update the external ``sessions`` list reference so subsequent
+        # deletes reference the new order.
+        sessions[:] = new_sessions
 
 
 if __name__ == "__main__":
