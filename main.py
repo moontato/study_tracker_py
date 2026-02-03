@@ -165,6 +165,8 @@ class StudyTrackerApp(tk.Tk):
             self.stop_session()
         # Update timer label to zero
         self.timer_label.config(text="00:00:00")
+        # Reset target seconds when leaving timer mode
+        self._target_seconds = 0.0
 
     # ---------------------------------------------------------------------
     # Timer logic
@@ -241,31 +243,40 @@ class StudyTrackerApp(tk.Tk):
         self.resume_btn.config(state="disabled")
 
     def stop_session(self) -> None:
+        """End the current session and persist it.
+
+        The original implementation failed to record the full duration for
+        timer sessions that finished automatically (i.e. the timer reached
+        zero without the user clicking Stop).  We now compute the elapsed
+        time unconditionally and use ``_target_seconds`` for the duration
+        when the timer mode is active and the elapsed time has reached the
+        target.
+        """
         if not (self._running or self._elapsed > 0):
             messagebox.showinfo("No session", "No active session to stop.")
             return
-        if self._running:
-            self.after_cancel(self._timer_job)  # type: ignore[arg-type]
-            now = datetime.now()
-            elapsed = (now - self._start_time).total_seconds() + self._elapsed
-            start_time = self._start_time
-        else:
-            elapsed = self._elapsed
-            start_time = self._start_time
-        # Determine duration: if timer mode and finished automatically, use target
+
+        # Compute elapsed time regardless of running state
+        now = datetime.now()
+        elapsed = (now - self._start_time).total_seconds() + self._elapsed
+        start_time = self._start_time
+
+        # If the timer finished automatically, record the target duration
         if self._mode == "timer" and elapsed >= self._target_seconds:
             duration = self._target_seconds
         else:
             duration = elapsed
-        # Fetch notes
+
+        # Fetch notes and persist session
         notes = self.notes_text.get("1.0", tk.END).strip()
-        # Save to DB
-        self.db.add_session(start=start_time, end=datetime.now(), duration=duration, notes=notes)
+        self.db.add_session(start=start_time, end=now, duration=duration, notes=notes)
         messagebox.showinfo("Session Saved", f"Session of {self._format_seconds(duration)} saved.")
-        # Reset UI
+
+        # Reset state and UI
         self._running = False
         self._elapsed = 0.0
         self._start_time = None
+        self._target_seconds = 0.0
         self.timer_label.config(text="00:00:00")
         self.start_btn.config(state="normal")
         self.pause_btn.config(state="disabled")
