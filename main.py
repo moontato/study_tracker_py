@@ -225,14 +225,16 @@ class StudyTrackerApp(tk.Tk):
             return
         # For timer mode, prompt for duration
         if self._mode == "timer":
-            # Ask minutes; default 25
-            # Allow timer up to 99 hours 59 minutes 59 seconds (approx 5999 minutes)
-            minutes = simpledialog.askinteger(
-                "Timer duration", "Enter minutes:", parent=self, minvalue=1, maxvalue=5999
+            # Prompt for hours (allow fractions like 1.5)
+            hours = simpledialog.askfloat(
+                "Timer duration", "Enter hours (e.g., 1.5 for 1h30m):", parent=self, minvalue=0.01
             )
-            if minutes is None:
+            if hours is None:
                 return
-            self._target_seconds = minutes * 60
+            # Clamp to maximum 99.9999 hours (~5999 minutes)
+            if hours > 99.9999:
+                hours = 99.9999
+            self._target_seconds = int(hours * 3600)
             # Reset elapsed for new session
             self._elapsed = 0.0
         else:
