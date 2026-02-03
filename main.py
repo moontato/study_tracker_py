@@ -300,7 +300,11 @@ class StudyTrackerApp(tk.Tk):
     def open_sessions_window(self) -> None:
         win = tk.Toplevel(self)
         win.title("Past Sessions")
-        win.geometry("400x300")
+        # Make window wider to accommodate the delete button and provide
+        # better spacing for the listbox.
+        # Slightly increase width to ensure adequate padding
+        # Increase width further for better spacing
+        win.geometry("580x300")
         listbox = tk.Listbox(win, width=50, height=10)
         listbox.pack(side="left", fill="both", expand=True, padx=5, pady=5)
         scrollbar = ttk.Scrollbar(win, orient="vertical", command=listbox.yview)
@@ -330,7 +334,9 @@ class StudyTrackerApp(tk.Tk):
         listbox.config(bg="white", selectbackground="#d1e7ff")
 
         # Delete button
-        delete_btn = ttk.Button(win, text="Delete Selected", command=lambda: self._delete_selected_session(listbox, sessions))
+        # Use a regular Tk button to give us a white background that
+        # contrasts the gray window background.
+        delete_btn = tk.Button(win, text="Delete Selected", bg="white", command=lambda: self._delete_selected_session(listbox, sessions))
         delete_btn.pack(pady=5)
 
     def _show_session_detail(self, start: str, end: str, duration: float, notes: str) -> None:
