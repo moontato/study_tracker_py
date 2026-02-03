@@ -226,8 +226,9 @@ class StudyTrackerApp(tk.Tk):
         # For timer mode, prompt for duration
         if self._mode == "timer":
             # Ask minutes; default 25
+            # Allow timer up to 99 hours 59 minutes 59 seconds (approx 5999 minutes)
             minutes = simpledialog.askinteger(
-                "Timer duration", "Enter minutes:", parent=self, minvalue=1, maxvalue=180
+                "Timer duration", "Enter minutes:", parent=self, minvalue=1, maxvalue=5999
             )
             if minutes is None:
                 return
