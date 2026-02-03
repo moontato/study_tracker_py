@@ -99,6 +99,9 @@ class StudyTrackerApp(tk.Tk):
         style.configure("TButton", padding=6, relief="flat", font=("Segoe UI", 10))
         style.configure("TLabel", font=("Segoe UI", 10), background="white")
         style.configure("TFrame", background="#f0f0f0")
+        # Custom style for white buttons with borders
+        style.configure("White.TButton", background="white", foreground="black", borderwidth=1, padding=6)
+        style.map("White.TButton", background=[("active", "#e6e6e6")])
         # Configure treeview appearance
         style.configure("Treeview", background="white", foreground="black", fieldbackground="white")
         style.map("Treeview", background=[("selected", "#cce5ff")])
@@ -340,9 +343,9 @@ class StudyTrackerApp(tk.Tk):
         # Buttons
         btn_frame = ttk.Frame(win)
         btn_frame.pack(pady=5)
-        delete_btn = ttk.Button(btn_frame, text="Delete Selected", command=lambda: self._delete_selected_session(tree, sessions))
+        delete_btn = ttk.Button(btn_frame, text="Delete Selected", style="White.TButton", command=lambda: self._delete_selected_session(tree, sessions))
         delete_btn.grid(row=0, column=0, padx=5)
-        open_btn = ttk.Button(btn_frame, text="Open Session", command=lambda: self._open_selected_sessions(tree, sessions))
+        open_btn = ttk.Button(btn_frame, text="Open Session", style="White.TButton", command=lambda: self._open_selected_sessions(tree, sessions))
         open_btn.grid(row=0, column=1, padx=5)
 
     def _show_session_detail(self, start: str, end: str, duration: float, notes: str) -> None:
